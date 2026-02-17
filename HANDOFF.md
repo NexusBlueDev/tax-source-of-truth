@@ -29,14 +29,17 @@ The system must:
 - Project name: tax-source-of-truth
 - Project URL: https://easdflriuxduqpmivfip.supabase.co
 
-Notes:
-- Supabase is the system of record for authoritative source data
-- No secrets are stored in the repository
-- Connection keys will be managed via environment variables later
+### Repository
+- GitHub: https://github.com/NexusBlueDev/tax-source-of-truth
+- Branch: main
+
+### Demo UI
+- URL: https://nexusbluedev.github.io/tax-source-of-truth/
+- Hosted via GitHub Pages (static HTML, no server)
+- Read-only — uses Supabase anon key directly in the browser
 
 ## Development Constraints
 - Windows-based Python workflow
-- Built from python-project-template
 - Source accuracy over convenience
 - No assumptions without citations
 - Incremental, auditable development
@@ -46,6 +49,7 @@ Notes:
 
 - Supabase is the system of record for authoritative tax sources
 - source_registry table implemented, seeded, and verified (12 rows)
+- RLS enabled on source_registry; "Enable read access for all users" policy active
 - Schema defined in docs/schema.md
 - Seed plan defined in docs/seed_plan.md
 - Python 3.12 virtual environment configured
@@ -53,7 +57,8 @@ Notes:
 - Deterministic search and retrieval layer implemented (src/search.py)
 - AI education layer implemented with citation enforcement (src/ai_educator.py)
 - OpenAI integration present but dormant and manually triggered only
-- No automation, no RLS, and no database writes from Python
+- Static GitHub Pages demo UI live (index.html)
+- No automation and no database writes from Python
 
 ## Database State
 
@@ -61,13 +66,15 @@ Notes:
 - Schema implemented and matches docs/schema.md
 - Seeded and verified
 - Total rows: 12
+- RLS: enabled
+- Active policy: "Enable read access for all users" (anon key read access)
 - Coverage:
   - Federal: IRS IRB, CFR Title 26
   - Ohio (State): ORC, OAC, Ohio Department of Taxation, Regional Income Tax Agency (RITA)
   - Ohio (City): Columbus Income Tax Division, Dayton Income Tax Division, Cincinnati Income Tax Division
   - Florida: Florida Statutes, Florida Administrative Code, Florida Department of Revenue
 - All sources marked primary and active
-- No RLS, policies, automation, or write access from Python
+- No write access from Python
 
 ## Python Access
 
@@ -113,73 +120,59 @@ Notes:
 - AI usage is intentional, auditable, and manually triggered
 - No database writes or automated execution paths
 
+## Demo UI (Complete)
+
+- Static HTML file: index.html
+- Hosted on GitHub Pages: https://nexusbluedev.github.io/tax-source-of-truth/
+- Uses Supabase JS client with anon key (read-only, safe to expose)
+- Features:
+  - Filter by jurisdiction level (All / Federal / State / City)
+  - Live text search across name, jurisdiction, authority type, coverage notes
+  - Source cards with official status badge, tags, coverage notes, and URL
+  - Active/inactive indicator per source
+  - Disclaimer banner
+- No server, no build step, no deployment pipeline
+
 ## Next Logical Phases (Not Executed)
 
-### High-confidence recommended sequence (demo-first)
-
-1. Build UI for user test and demo (next)
-   - Use Streamlit for an internal demo UI
-   - Read-only first
-   - Capabilities:
-     - Search and explore jurisdictions and sources
-     - Ask AI questions (education mode, citations required)
-   - No writes in the initial UI milestone
-
-2. Add Admin UI (controlled writes)
+1. Add Admin UI (controlled writes)
    - Add and edit jurisdictions, sources, and authorities
    - Manual save only
    - Explicit authoritative tagging (statute, regulation, agency guidance)
    - No automation
 
-3. Add RITA management
+2. Add RITA management
    - City-to-RITA membership mapping
    - Admin-only changes
    - Integrate mapping into search and AI context
 
-4. Demo hardening
-   - Demo and user-test mode
-   - Disclaimers and guardrails
-   - Predictable demo flows
-   - Separation of read vs manage modes
+3. Activate AI education layer
+   - Wire OpenAI calls into src/ai_educator.py
+   - Expose AI explanations in demo UI
+   - Citations required in every response
+   - Manual trigger only, no automation
 
-5. Publish to GitHub
-   - After UI MVP exists
-   - Add README describing:
-     - Architecture
-     - Safety constraints
-     - AI usage policy (manual, citation-enforced)
-
-6. Monitoring metadata (schema-level only)
+4. Monitoring metadata (schema-level)
    - Update cadence
    - Effective date
    - Last reviewed
    - Change detection method
-   - Still no automation
 
-7. Change detection (implementation)
+5. Change detection (implementation)
    - Start with 1–2 sources (IRS IRB, Ohio Department of Taxation)
    - Diff and alert only
    - No auto-write without approval
 
-8. Expand jurisdictions
+6. Expand jurisdictions
    - Additional Ohio municipalities
    - Florida municipalities and counties as needed
 
-## Immediate Next Goal
-
-Build a read-only UI suitable for internal user testing and demos.
-
-- Implement a Streamlit-based UI
-- Support search and exploration of jurisdictions and sources
-- Enable AI-assisted education with citations
-- No write access in the initial UI phase
-
 ## Open Questions
 
-- UI framework confirmation (Streamlit vs future React)
 - Admin permission model for managing sources
 - Review and approval workflow for AI-generated explanations
 - Scope and cadence of future change detection
+- UI framework for admin layer (extend index.html vs. separate app)
 
 ## Last Updated
-2026-01-01
+2026-02-17

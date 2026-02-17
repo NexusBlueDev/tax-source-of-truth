@@ -1,65 +1,80 @@
-# Python Project Template
+# Tax Source of Truth
 
-Reusable Python project template for NexusBlue development on Windows.
+A curated, authoritative registry of public tax and accounting law sources.
 
-This template assumes:
-- Python is already installed
-- Git is configured
-- GitHub SSH authentication is set up
-- Projects live under OneDrive for backup
+Maintains a single source of truth for tax research and education workflows —
+tracking primary sources by jurisdiction, authority type, and official status
+with traceable citations back to the original publisher.
 
-Authoritative setup documentation lives in SETUP.md.
----
-
-## Template Status
-
-This repository is a stable Python project template for NexusBlue.
-
-Tooling (formatting, linting, CI, VS Code integration) is considered complete.
-Only project-specific code should be added when using this template.
+**Live demo:** https://nexusbluedev.github.io/tax-source-of-truth/
 
 ---
 
-## Quick Start (After Using This Template)
+## What It Does
 
-After creating a new repository from this template and cloning it locally:
+- Stores authoritative public URLs for tax law across federal, state, and city jurisdictions
+- Enforces citation requirements — no facts without a primary source
+- Provides a read-only search and retrieval layer with no inference or fuzzy logic
+- Exposes an AI education layer (dormant) that requires citations in every response
+
+## Current Coverage
+
+| Jurisdiction | Sources |
+|---|---|
+| Federal | IRS Internal Revenue Bulletin, CFR Title 26 |
+| Ohio (State) | Ohio Revised Code, Ohio Administrative Code, Ohio Dept of Taxation, RITA |
+| Ohio (Cities) | Columbus, Dayton, Cincinnati income tax divisions |
+| Florida (State) | Florida Statutes, Florida Administrative Code, Florida Dept of Revenue |
+
+## Architecture
+
+```
+Supabase (PostgreSQL)
+  └── source_registry table (RLS enabled, read-only via anon key)
+        └── src/search.py       — deterministic query helpers, no inference
+              └── src/ai_educator.py  — citation-enforced AI education layer (dormant)
+
+index.html                      — static GitHub Pages demo UI (Supabase JS client)
+```
+
+## Stack
+
+- **Database:** Supabase (PostgreSQL) with RLS enabled
+- **Backend:** Python 3.12, Supabase Python client, python-dotenv
+- **AI layer:** OpenAI (dormant — requires explicit OPENAI_API_KEY, manual trigger only)
+- **Demo UI:** Static HTML + Supabase JS client, hosted on GitHub Pages
+- **Code quality:** Black, Ruff, pre-commit hooks, GitHub Actions CI
+
+## Local Setup
 
 ```powershell
-cd <project-directory>
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
 
----
-
-## Pre-commit Hooks
-
-This project uses pre-commit to enforce formatting and linting.
-
-Hooks run automatically before every commit.
-
-To run manually:
+Copy `.env.example` to `.env` and fill in your Supabase credentials.
 
 ```powershell
-pre-commit run --all-files
+# Verify database connection
+python -m scripts.test_read_only
 
-If needed, hooks can be bypassed with:
+# Run search helpers
+python -m scripts.test_search_helpers
 
-git commit --no-verify
+# Run AI educator (no model calls)
+python -m scripts.test_ai_educator
+```
 
+## Design Constraints
 
-Save and close.
+- **Read-only from Python** — no database writes from code; mutations require manual Supabase console access
+- **No inference** — search layer returns exact matches only; no fuzzy logic or AI in the data retrieval path
+- **Citations required** — AI education layer is explicitly constrained to return only source-backed answers
+- **Anon key is public** — the Supabase anon key is intentionally read-only and safe to expose in the demo UI
+- **AI is dormant** — OpenAI integration exists but requires explicit environment setup; no automated calls
 
----
+## Repository
 
-## STEP 6: Commit and push
-
-Run:
-
-```powershell
-git status
-git add .pre-commit-config.yaml requirements-dev.txt README.md
-git commit -m "Add pre-commit hooks for formatting and linting"
-git push
-
----
+https://github.com/NexusBlueDev/tax-source-of-truth
