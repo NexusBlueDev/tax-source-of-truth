@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tax Source of Truth</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f6f8;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+    header span { font-size: 0.85rem; color: #9ca3af; }
+
+    .disclaimer {
+      background: #fefce8;
+      border-bottom: 1px solid #fde68a;
+      padding: 0.6rem 2rem;
+      font-size: 0.8rem;
+      color: #713f12;
+    }
+
+    .controls {
+      padding: 1.25rem 2rem;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .controls input {
+      flex: 1;
+      min-width: 220px;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .controls input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15); }
+
+    .filter-group { display: flex; gap: 0.4rem; }
+    .filter-btn {
+      padding: 0.45rem 0.9rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: #374151;
+    }
+    .filter-btn:hover { background: #f3f4f6; }
+    .filter-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+    .results-meta {
+      padding: 0.6rem 2rem;
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 1rem;
+      padding: 1rem 2rem 2rem;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      transition: box-shadow 0.15s;
+    }
+    .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+    .card-title { font-size: 0.95rem; font-weight: 600; line-height: 1.3; }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .badge-primary   { background: #dcfce7; color: #15803d; }
+    .badge-secondary { background: #dbeafe; color: #1d4ed8; }
+    .badge-convenience { background: #f3f4f6; color: #6b7280; }
+
+    .meta-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .tag {
+      font-size: 0.72rem;
+      padding: 0.18rem 0.5rem;
+      border-radius: 4px;
+      background: #f3f4f6;
+      color: #374151;
+    }
+    .tag-federal { background: #ede9fe; color: #6d28d9; }
+    .tag-state   { background: #fef3c7; color: #92400e; }
+    .tag-city    { background: #dbeafe; color: #1e40af; }
+
+    .coverage { font-size: 0.82rem; color: #4b5563; line-height: 1.45; }
+
+    .card-footer { margin-top: auto; padding-top: 0.4rem; border-top: 1px solid #f3f4f6; }
+    .source-link {
+      font-size: 0.8rem;
+      color: #2563eb;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .source-link:hover { text-decoration: underline; }
+
+    .inactive-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #d1d5db;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .active-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 3rem;
+      color: #9ca3af;
+      font-size: 0.9rem;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: #9ca3af;
+      font-size: 0.9rem;
+    }
+
+    .error-msg {
+      margin: 1rem 2rem;
+      padding: 0.75rem 1rem;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      color: #b91c1c;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Tax Source of Truth</h1>
+  <span>Authoritative public sources for tax &amp; accounting law</span>
+</header>
+
+<div class="disclaimer">
+  Read-only demo &mdash; Sources are curated manually. Not legal advice. Verify all information against primary sources.
+</div>
+
+<div class="controls">
+  <input type="text" id="search" placeholder="Search by name or coverage..." />
+  <div class="filter-group">
+    <button class="filter-btn active" data-level="all">All</button>
+    <button class="filter-btn" data-level="federal">Federal</button>
+    <button class="filter-btn" data-level="state">State</button>
+    <button class="filter-btn" data-level="city">City</button>
+  </div>
+</div>
+
+<div class="results-meta" id="meta"></div>
+<div id="error"></div>
+<div class="grid" id="grid">
+  <div class="loading">Loading sources&hellip;</div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://easdflriuxduqpmivfip.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_P1IjevxPIXbU8X4N83kcIA_T2NDpPqa';
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let allSources = [];
+  let activeLevel = 'all';
+  let searchTerm = '';
+
+  async function loadSources() {
+    const { data, error } = await db
+      .from('source_registry')
+      .select('*')
+      .order('jurisdiction_level')
+      .order('jurisdiction_name');
+
+    if (error) {
+      document.getElementById('error').innerHTML =
+        `<div class="error-msg">Failed to load sources: ${error.message}</div>`;
+      document.getElementById('grid').innerHTML = '';
+      return;
+    }
+
+    allSources = data || [];
+    render();
+  }
+
+  function filtered() {
+    return allSources.filter(s => {
+      if (activeLevel !== 'all' && s.jurisdiction_level !== activeLevel) return false;
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        return (
+          (s.source_name || '').toLowerCase().includes(q) ||
+          (s.coverage_notes || '').toLowerCase().includes(q) ||
+          (s.jurisdiction_name || '').toLowerCase().includes(q) ||
+          (s.authority_type || '').toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }
+
+  function statusBadgeClass(status) {
+    if (status === 'primary') return 'badge-primary';
+    if (status === 'secondary') return 'badge-secondary';
+    return 'badge-convenience';
+  }
+
+  function levelTagClass(level) {
+    if (level === 'federal') return 'tag-federal';
+    if (level === 'state') return 'tag-state';
+    if (level === 'city') return 'tag-city';
+    return '';
+  }
+
+  function authorityLabel(type) {
+    const labels = {
+      statute: 'Statute',
+      regulation: 'Regulation',
+      tax_agency_guidance: 'Agency Guidance',
+      administrative_bulletin: 'Admin Bulletin',
+      municipal_ordinance: 'Municipal Ordinance',
+      rate_table: 'Rate Table',
+    };
+    return labels[type] || type;
+  }
+
+  function renderCard(s) {
+    const active = s.active !== false;
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">${esc(s.source_name)}</div>
+          <span class="badge ${statusBadgeClass(s.official_status)}">${esc(s.official_status)}</span>
+        </div>
+        <div class="meta-row">
+          <span class="tag ${levelTagClass(s.jurisdiction_level)}">${esc(s.jurisdiction_level)}</span>
+          <span class="tag">${esc(s.jurisdiction_name)}</span>
+          <span class="tag">${esc(authorityLabel(s.authority_type))}</span>
+        </div>
+        ${s.coverage_notes ? `<div class="coverage">${esc(s.coverage_notes)}</div>` : ''}
+        <div class="card-footer">
+          <span class="${active ? 'active-dot' : 'inactive-dot'}"></span>
+          ${s.source_url
+            ? `<a class="source-link" href="${esc(s.source_url)}" target="_blank" rel="noopener noreferrer">${esc(s.source_url)}</a>`
+            : '<span style="color:#9ca3af;font-size:0.8rem">No URL recorded</span>'
+          }
+        </div>
+      </div>`;
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function render() {
+    const results = filtered();
+    const grid = document.getElementById('grid');
+    const meta = document.getElementById('meta');
+
+    meta.textContent = `${results.length} source${results.length !== 1 ? 's' : ''}`;
+
+    if (results.length === 0) {
+      grid.innerHTML = '<div class="empty">No sources match your filters.</div>';
+      return;
+    }
+
+    grid.innerHTML = results.map(renderCard).join('');
+  }
+
+  // Filter buttons
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeLevel = btn.dataset.level;
+      render();
+    });
+  });
+
+  // Search input (debounced)
+  let debounce;
+  document.getElementById('search').addEventListener('input', e => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => {
+      searchTerm = e.target.value.trim();
+      render();
+    }, 200);
+  });
+
+  loadSources();
+</script>
+</body>
+</html>
