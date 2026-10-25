@@ -68,6 +68,7 @@ The system must:
 - Total rows: 12
 - RLS: enabled
 - Active policy: "Enable read access for all users" (anon key read access)
+- **2026-10-25: Explicit Data API grants applied** (`supabase/manual-grants/2026-10-25_data_api_grants.sql`) ahead of Supabase's platform-wide removal of the automatic Data API grant on 2026-10-30. `service_role` GRANT ALL, `authenticated`/`anon` GRANT SELECT only (matches the existing SELECT-only RLS policy, no write access granted or changed). Applied directly via the Supabase Management API since this repo has no migration-as-code discipline (no `migrations/` directory at all) -- see "Known Gaps" below.
 - Coverage:
   - Federal: IRS IRB, CFR Title 26
   - Ohio (State): ORC, OAC, Ohio Department of Taxation, Regional Income Tax Agency (RITA)
@@ -167,6 +168,10 @@ The system must:
    - Additional Ohio municipalities
    - Florida municipalities and counties as needed
 
+## Known Gaps
+
+- **No migration-as-code discipline.** Schema (`source_registry` table, RLS policy) was created directly via the Supabase dashboard SQL editor, not via a committed migration file. There is no `migrations/` directory, no migration tool, and no way to replay or diff schema history from this repo. This is a separate, larger structural gap from the 2026-10-25 Data API grant fix above (which was a one-time Management API call specifically because no migration path exists). Filed as `setup_blockers` for this repo (see Setup Copilot dashboard) -- recommend adopting a migration tool (e.g. Supabase CLI migrations) before the next schema change (the "Admin UI (controlled writes)" phase below would be a natural point to require it).
+
 ## Open Questions
 
 - Admin permission model for managing sources
@@ -175,4 +180,4 @@ The system must:
 - UI framework for admin layer (extend index.html vs. separate app)
 
 ## Last Updated
-2026-02-17
+2026-10-25
